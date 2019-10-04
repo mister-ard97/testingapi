@@ -15,7 +15,7 @@ const mysql = require('mysql');
      host: 'localhost',
      user: 'rezadb',
      password: 'rezadb10071997',
-     database: 'macommerce_db',
+     database: 'testingapi',
      port: 3306,
      multipleStatements: true
  })

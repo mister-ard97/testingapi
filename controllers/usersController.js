@@ -22,86 +22,74 @@ module.exports = {
                 const data = JSON.parse(req.body.data);
 
                 let {
-                    username,
                     password,
                     email,
-                    FirstName,
-                    LastName,
-                    address,
+                    name,
                 } = data
 
-                let sql = `SELECT * FROM users WHERE username='${username}'`
-                mysql_conn.query(sql, (err, resultsUsername) => {
+                let sql = `SELECT * FROM users WHERE email='${email}'`
+                mysql_conn.query(sql, (err, resultsEmail) => {
                     if (err) {
                         return res.status(500).send({ status: 'error', err })
                     }
 
-                    sql = `SELECT * FROM users WHERE email='${email}'`
-                    mysql_conn.query(sql, (err, resultsEmail) => {
+                    /* if (resultsUsername.length > 0 && resultsEmail.length > 0) {
+                        return res.status(500).send({ status: 'error', message: 'Username & Email been taken by another user!. Try another Username & Email' });
+                    }
+
+                    if (resultsUsername.length > 0) {
+                        return res.status(500).send({ status: 'error', message: 'Username has been taken by another user!. Try another username' });
+                    } */
+
+                    if (resultsEmail.length > 0) {
+                        return res.status(500).send({ status: 'error', message: 'Email has been used by another user!. Try another Email' });
+                    }
+
+                    let hashPassword = Crypto.createHmac('sha256', 'macommerce_api')
+                        .update(password).digest('hex');
+
+
+                    // Upload User Data
+
+                    let dataUser = {
+                        password: hashPassword,
+                        email,
+                        name,
+                        status: 'Unverified',
+                        LastLogin: new Date(),
+                        role: 'User'
+                    }
+
+                    const { imageUser } = req.files;
+                    console.log(imageUser)
+                    const imagePath = imageUser ? path + '/' + imageUser[0].filename : '/defaultPhoto/defaultUser.png';
+                    console.log(imagePath)
+
+                    console.log(data)
+                    dataUser.UserImage = imagePath;
+
+                    sql = 'INSERT INTO users SET ?';
+                    mysql_conn.query(sql, dataUser, (err, results) => {
                         if (err) {
-                            return res.status(500).send({ status: 'error', err })
+                            console.log(err.message)
+                            fs.unlinkSync('./public' + imagePath);
+                            return res.status(500).json({ message: "There's an error on the server. Please contact the administrator.", error: err.message });
                         }
 
-                        if (resultsUsername.length > 0 && resultsEmail.length > 0) {
-                            return res.status(500).send({ status: 'error', message: 'Username & Email been taken by another user!. Try another Username & Email' });
-                        }
-
-                        if (resultsUsername.length > 0) {
-                            return res.status(500).send({ status: 'error', message: 'Username has been taken by another user!. Try another username' });
-                        }
-
-                        if (resultsEmail.length > 0) {
-                            return res.status(500).send({ status: 'error', message: 'Email has been used by another user!. Try another Email' });
-                        }
-
-                        let hashPassword = Crypto.createHmac('sha256', 'macommerce_api')
-                            .update(password).digest('hex');
-
-                       
-                        // Upload User Data
-
-                        let dataUser = {
-                            username,
-                            password: hashPassword,
-                            email,
-                            FirstName,
-                            LastName,
-                            address,
-                            status: 'Unverified',
-                            LastLogin: new Date(),
-                            role:'User'
-                        }
-
-                        const { imageUser } = req.files;
-                        console.log(imageUser)
-                        const imagePath = imageUser ? path + '/' + imageUser[0].filename : '/defaultPhoto/defaultUser.png';
-                        console.log(imagePath)
-
-                        console.log(data)
-                        dataUser.UserImage = imagePath;
-
-                        sql = 'INSERT INTO users SET ?';
-                        mysql_conn.query(sql, dataUser, (err, results) => {
+                        sql = `select * from users where username='${username}' and role='User' and googleId IS NULL`
+                        mysql_conn.query(sql, (err, results) => {
                             if (err) {
-                                console.log(err.message)
-                                fs.unlinkSync('./public' + imagePath);
-                                return res.status(500).json({ message: "There's an error on the server. Please contact the administrator.", error: err.message });
+                                return res.status(500).send({ status: 'error', err })
                             }
 
-                            sql = `select * from users where username='${username}' and role='User' and googleId IS NULL`
-                            mysql_conn.query(sql, (err, results) => {
-                                if (err) {
-                                    return res.status(500).send({ status: 'error', err })
-                                }
+                            const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
 
-                                const tokenJwt = createJWTToken({ userId: results[0].id, username: results[0].username })
-                                
-                                let linkVerifikasi = `http://localhost:3000/verified/${tokenJwt}`;
-                                let mailOptions = {
-                                    from: 'MaCommerce Admin <rezardiansyah1997@gmail.com>',
-                                    to: email,
-                                    subject: 'Verifikasi Email for MaCommerce',
-                                    html: `
+                            let linkVerifikasi = `http://localhost:3000/verified/${tokenJwt}`;
+                            let mailOptions = {
+                                from: 'MaCommerce Admin <rezardiansyah1997@gmail.com>',
+                                to: email,
+                                subject: 'Verifikasi Email for TestingUi',
+                                html: `
                                         <div>
                                             <img src='https://i.ibb.co/L8SgW3n/logo-Macommerce.png' /><span>Online Shop ter-update dalam fashion</span>
                                             <hr />
@@ -110,26 +98,23 @@ module.exports = {
                                             <p>To verification your account <a href='${linkVerifikasi}'>Click Here!</a></p>
                                             <hr />
                                         </div>`
+                            }
+
+                            transporter.sendMail(mailOptions, (err1, res1) => {
+                                if (err1) {
+                                    return res.status(500).send({ status: 'error', err: err1 })
                                 }
 
-                                transporter.sendMail(mailOptions, (err1, res1) => {
-                                    if (err1) {
-                                        return res.status(500).send({ status: 'error', err: err1 })
-                                    }
+                                return res.status(200).send({
+                                    name: results[0].name,
+                                    username: results[0].username,
+                                    email: results[0].email,
+                                    token: tokenJwt,
+                                    status: results[0].status,
+                                    UserImage: results[0].UserImage,
+                                    role: results[0].role
+                                });
 
-                                    return res.status(200).send({
-                                        FirstName: results[0].FirstName,
-                                        LastName: results[0].LastName,
-                                        username: results[0].username,
-                                        email: results[0].email,
-                                        token: tokenJwt,
-                                        status: results[0].status,
-                                        UserImage: results[0].UserImage,
-                                        role: results[0].role,
-                                        address: results[0].address
-                                    });
-
-                                })
                             })
                         })
                     })
@@ -172,18 +157,16 @@ module.exports = {
                             return res.status(500).send({ status: 'error', err })
                         }
 
-                        const tokenJwt = createJWTToken({ userId: results[0].id, username: results[0].username })
+                        const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
                         
                         return res.status(200).send({
-                            FirstName: results[0].FirstName,
-                            LastName: results[0].LastName,
+                            name: results[0].name,
                             username: results[0].username,
                             email: results[0].email,
                             token: tokenJwt,
                             status: results[0].status,
                             UserImage: results[0].UserImage,
-                            role: results[0].role,
-                            address: results[0].address
+                            role: results[0].role
                         });
                     })
                 })
@@ -197,7 +180,7 @@ module.exports = {
                         return res.status(500).send({ status: 'error', err })
                     }
 
-                    const tokenJwt = createJWTToken({ userId: results[0].id, username: results[0].username })
+                    const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
 
                     return res.status(200).send({
                         FirstName: results[0].FirstName,
@@ -209,6 +192,76 @@ module.exports = {
                         UserImage: results[0].UserImage,
                         role: results[0].role,
                         address: results[0].address
+                    });
+                })
+            }
+        })
+    },
+
+    userLoginWithFacebook: (req, res) => {
+        let encryptFacebookId = Crypto.createHmac('sha256', 'macommerce_api')
+            .update(req.body.data.facebookId).digest('hex')
+
+        let sql = `select * from users where facebookId = '${encryptFacebookId}'`
+
+        mysql_conn.query(sql, (err, results) => {
+            if (err) {
+                return res.status(500).send({ status: 'error', err })
+            }
+
+            if (results.length === 0) {
+                // Apabila belum pernah login menggunakan facebook
+                sql = `insert into users set ?`
+
+                req.body.data.facebookId = encryptFacebookId
+                req.body.data.role = 'User'
+                req.body.data.status = 'Verified'
+                req.body.data.UserImage = '/defaultPhoto/defaultUser.png'
+                req.body.data.LastLogin = new Date();
+
+                mysql_conn.query(sql, req.body.data, (err, results1) => {
+                    if (err) {
+                        return res.status(500).send({ status: 'error', err })
+                    }
+
+                    sql = `select * from users where id = ${results1.insertId}`
+                    mysql_conn.query(sql, (err, results) => {
+                        if (err) {
+                            return res.status(500).send({ status: 'error', err })
+                        }
+
+                        const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
+
+                        return res.status(200).send({
+                            name: results[0].name,
+                            username: results[0].username,
+                            email: results[0].email,
+                            token: tokenJwt,
+                            status: results[0].status,
+                            UserImage: results[0].UserImage,
+                            role: results[0].role
+                        });
+                    })
+                })
+
+            } else {
+
+                // Apabila telah login menggunakan google, maka data tidak akan di insert lagi
+                sql = `select * from users where googleId = '${encryptFacebookId}'`
+                mysql_conn.query(sql, (err, results) => {
+                    if (err) {
+                        return res.status(500).send({ status: 'error', err })
+                    }
+
+                    const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
+
+                    return res.status(200).send({
+                        name: results[0].name,
+                        email: results[0].email,
+                        token: tokenJwt,
+                        status: results[0].status,
+                        UserImage: results[0].UserImage,
+                        role: results[0].role,
                     });
                 })
             }
@@ -226,7 +279,7 @@ module.exports = {
                 return res.status(500).send({ status: 'error', message: 'User not found' });
             }
 
-            const tokenJwt = createJWTToken({ userId: results[0].id, username: results[0].username })
+            const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
 
             sql = `Update users Set status='Verified' where id = ${req.user.userId}`
             mysql_conn.query(sql, (err, results1) => {
@@ -242,15 +295,12 @@ module.exports = {
                     }
 
                     return res.status(200).send({
-                        FirstName: results[0].FirstName,
-                        LastName: results[0].LastName,
-                        username: results[0].username,
+                        name: results[0].name,
                         email: results[0].email,
                         token: tokenJwt,
                         status: results[0].status,
                         UserImage: results[0].UserImage,
                         role: results[0].role,
-                        address: results[0].address
                     });
                 })
             })
@@ -258,9 +308,9 @@ module.exports = {
     },
 
     resendEmailVerification: (req, res) => {
-        let { username, email } = req.body;
+        let { email } = req.body;
 
-        let sql = `Select id, username, email, status From users where username='${username}' and email='${email}'`;
+        let sql = `Select id, email, status From users where email='${email}'`;
         mysql_conn.query(sql, (err, results) => {
             if (err) {
                 return res.status(500).send({ status: 'error', err })
@@ -270,7 +320,7 @@ module.exports = {
                 return res.status(500).send({ status: 'error', err: 'User Not Found!' })
             }
 
-            const tokenJwt = createJWTToken({ userId: results[0].id, username: results[0].username })
+            const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
 
             let linkVerifikasi = `http://localhost:3000/verified/${tokenJwt}`;
             let mailOptions = {
@@ -294,22 +344,19 @@ module.exports = {
                 }
 
                 return res.status(200).send({
-                    FirstName: results[0].FirstName,
-                    LastName: results[0].LastName,
-                    username: results[0].username,
+                    name: results[0].name,
                     email: results[0].email,
                     token: tokenJwt,
                     status: results[0].status,
+                    UserImage: results[0].UserImage,
                     role: results[0].role,
-                    address: results[0].address, 
-                    UserImage: results[0].UserImage
                 });
             })
         })
     },
 
     keepLoginUser: (req, res) => {
-        let sql = `select * from users where id = ${req.user.userId} and username = '${req.user.username}'`;
+        let sql = `select * from users where id = ${req.user.userId} and email = '${req.user.email}'`;
         mysql_conn.query(sql, (err, results) => {
             if (err) {
                 return res.status(500).send({ status: 'error', err })
@@ -319,60 +366,66 @@ module.exports = {
                 return res.status(500).send({ status: 'error', err: 'User Not Found!' })
             }
 
-            const tokenJwt = createJWTToken({ userId: results[0].id, username: results[0].username })
+            const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
             
             return res.status(200).send({
-                FirstName: results[0].FirstName,
-                LastName: results[0].LastName,
-                username: results[0].username,
+                name: results[0].name,
                 email: results[0].email,
                 token: tokenJwt,
                 status: results[0].status,
                 UserImage: results[0].UserImage,
                 role: results[0].role,
-                address: results[0].address
             });  
         })
     },
 
     userLogin: (req, res) => {
-        let { username, password} = req.body;
+        let { email, password} = req.body;
         let hashPassword = Crypto.createHmac('sha256', 'macommerce_api')
             .update(password).digest('hex');
         
-        let sql = `Select * from users where username='${username}' and password='${hashPassword}' and role='User'`;
-        mysql_conn.query(sql, (err, results) => {
+        let sql = `Select * from users where email = '${email}'`
+        mysql_conn.query(sql, (err, resultsEmail) => {
             if (err) {
                 return res.status(500).send({ status: 'error', err })
             }
 
-            if (results.length === 0) {
-                return res.status(500).send({ status: 'error', message: 'Username or Password is wrong.!' });
+            if (resultsEmail.length === 0) {
+                return res.status(500).send({ status: 'error', message: 'Email belum terdaftar di webiste kami.' });
             }
 
-            const tokenJwt = createJWTToken({ userId: results[0].id, username: results[0].username })
-            sql = `Select * From users where username='${username}' and role='User'`;
-
+            let sql = `Select * from users where username='${email}' and password='${hashPassword}' and role='User'`;
             mysql_conn.query(sql, (err, results) => {
                 if (err) {
                     return res.status(500).send({ status: 'error', err })
                 }
 
                 if (results.length === 0) {
-                    return res.status(500).send({ status: 'error', err: 'User Not Found!' })
+                    return res.status(500).send({ status: 'error', message: 'Email or Password is wrong.!' });
                 }
 
-                return res.status(200).send({
-                    FirstName: results[0].FirstName,
-                    LastName: results[0].LastName,
-                    username: results[0].username,
-                    email: results[0].email,
-                    token: tokenJwt,
-                    status: results[0].status,
-                    UserImage: results[0].UserImage,
-                    role: results[0].role,
-                    address: results[0].address
-                });
+                const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
+
+                sql = `Select * From users where email='${email}' and role='User'`;
+
+                mysql_conn.query(sql, (err, results) => {
+                    if (err) {
+                        return res.status(500).send({ status: 'error', err })
+                    }
+
+                    if (results.length === 0) {
+                        return res.status(500).send({ status: 'error', err: 'User Not Found!' })
+                    }
+
+                    return res.status(200).send({
+                        name: results[0].name,
+                        email: results[0].email,
+                        token: tokenJwt,
+                        status: results[0].status,
+                        UserImage: results[0].UserImage,
+                        role: results[0].role,
+                    });
+                })
             })
         })
     },
@@ -453,7 +506,7 @@ module.exports = {
         }) 
     },
 
-    userChangeAddress: (req, res) => {
+     userChangeAddress: (req, res) => {
         let sql = `update users set ? where id = ${req.user.userId}`
         mysql_conn.query(sql, req.body.data, (err, results) => {
             if (err) {
@@ -474,7 +527,7 @@ module.exports = {
                 })
             })
         })
-    },
+    }, 
 
     commentOnProduct: (req, res) => {
         console.log(req.body.dataComment)
