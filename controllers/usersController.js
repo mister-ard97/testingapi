@@ -246,8 +246,8 @@ module.exports = {
 
             } else {
 
-                // Apabila telah login menggunakan google, maka data tidak akan di insert lagi
-                sql = `select * from users where googleId = '${encryptFacebookId}'`
+                // Apabila telah login menggunakan facebook, maka data tidak akan di insert lagi
+                sql = `select * from users where facebookId = '${encryptFacebookId}'`
                 mysql_conn.query(sql, (err, results) => {
                     if (err) {
                         return res.status(500).send({ status: 'error', err })
