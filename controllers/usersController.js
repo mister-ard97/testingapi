@@ -3,7 +3,8 @@ const Crypto = require('crypto');
 const fs = require('fs');
 
 const { uploader } = require('../helpers/uploader');
-const { createJWTToken } = require('../helpers/jwtoken');
+const { createJWTToken, createForgotPasswordToken } = require('../helpers/jwtoken');
+
 const transporter = require('../helpers/mailer');
 
 module.exports = {
@@ -42,7 +43,7 @@ module.exports = {
                     } */
 
                     if (resultsEmail.length > 0) {
-                        return res.status(500).send({ status: 'error', message: 'Email has been used by another user!. Try another Email' });
+                        return res.status(500).send({ status: 'error', message: 'Email has been registered. Try another Email' });
                     }
 
                     let hashPassword = Crypto.createHmac('sha256', 'macommerce_api')
@@ -76,7 +77,7 @@ module.exports = {
                             return res.status(500).json({ message: "There's an error on the server. Please contact the administrator.", error: err.message });
                         }
 
-                        sql = `select * from users where username='${username}' and role='User' and googleId IS NULL`
+                        sql = `select * from users where email='${email}' and role='User' and googleId IS NULL`
                         mysql_conn.query(sql, (err, results) => {
                             if (err) {
                                 return res.status(500).send({ status: 'error', err })
@@ -85,8 +86,11 @@ module.exports = {
                             const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
 
                             let linkVerifikasi = `http://localhost:3000/verified/${tokenJwt}`;
+                            //untuk live
+                            //let linkVerifikasi = `https://testingui4.herokuapp.com/verified/${tokenJwt}`
+                           
                             let mailOptions = {
-                                from: 'MaCommerce Admin <rezardiansyah1997@gmail.com>',
+                                from: 'TestingUi Admin <rezardiansyah1997@gmail.com>',
                                 to: email,
                                 subject: 'Verifikasi Email for TestingUi',
                                 html: `
@@ -94,7 +98,7 @@ module.exports = {
                                             <img src='https://i.ibb.co/L8SgW3n/logo-Macommerce.png' /><span>Online Shop ter-update dalam fashion</span>
                                             <hr />
                                             <h4>Link Verification</h4>
-                                            <p>This is a link verification for username: <span style='font-weight:bold'>${results[0].username}</span>.</p>
+                                            <p>This is a link verification for Email: <span style='font-weight:bold'>${results[0].email}</span>.</p>
                                             <p>To verification your account <a href='${linkVerifikasi}'>Click Here!</a></p>
                                             <hr />
                                         </div>`
@@ -107,7 +111,6 @@ module.exports = {
 
                                 return res.status(200).send({
                                     name: results[0].name,
-                                    username: results[0].username,
                                     email: results[0].email,
                                     token: tokenJwt,
                                     status: results[0].status,
@@ -126,105 +129,145 @@ module.exports = {
     }, 
 
     userLoginWithGoogle: (req, res) => {
-        let encryptGoogleId = Crypto.createHmac('sha256', 'macommerce_api')
-                                .update(req.body.data.googleId).digest('hex')
-
-        let sql = `select * from users where googleId = '${encryptGoogleId}'`
-
-        mysql_conn.query(sql, (err, results) => {
-            if (err) {
+        let sql = `select * from users where email = '${req.body.data.email}'`
+        mysql_conn.query(sql, (err, resultsEmail) => {
+            if(err) {
                 return res.status(500).send({ status: 'error', err })
             }
 
-            if(results.length === 0) {
-                // Apabila belum pernah login menggunakan gmail
-                sql = `insert into users set ?`
+            if(resultsEmail.length > 0) {
+                return res.status(500).send({ status: 'error', message: 'Email has been registered. Try another Email' });
+            }
 
-                req.body.data.googleId = encryptGoogleId
-                req.body.data.role = 'User'
-                req.body.data.status = 'Verified'
-                req.body.data.UserImage = '/defaultPhoto/defaultUser.png'
-                req.body.data.LastLogin = new Date();
-                
-                mysql_conn.query(sql, req.body.data, (err, results1) => {
-                    if (err) {
-                        return res.status(500).send({ status: 'error', err })
-                    }
+            let encryptGoogleId = Crypto.createHmac('sha256', 'macommerce_api')
+                .update(req.body.data.googleId).digest('hex')
 
-                    sql = `select * from users where id = ${results1.insertId}`
+            let sql = `select * from users where googleId = '${encryptGoogleId}'`
+
+            mysql_conn.query(sql, (err, results) => {
+                if (err) {
+                    return res.status(500).send({ status: 'error', err })
+                }
+
+                if (results.length === 0) {
+                    // Apabila belum pernah login menggunakan gmail
+                    sql = `insert into users set ?`
+
+                    req.body.data.googleId = encryptGoogleId
+                    req.body.data.role = 'User'
+                    req.body.data.status = 'Unverified'
+                    req.body.data.UserImage = '/defaultPhoto/defaultUser.png'
+                    req.body.data.LastLogin = new Date();
+
+                    mysql_conn.query(sql, req.body.data, (err, results1) => {
+                        if (err) {
+                            return res.status(500).send({ status: 'error', err })
+                        }
+
+                        sql = `select * from users where id = ${results1.insertId}`
+                        mysql_conn.query(sql, (err, results) => {
+                            if (err) {
+                                return res.status(500).send({ status: 'error', err })
+                            }
+
+                            const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
+
+                            return res.status(200).send({
+                                name: results[0].name,
+                                email: results[0].email,
+                                token: tokenJwt,
+                                status: results[0].status,
+                                UserImage: results[0].UserImage,
+                                role: results[0].role
+                            });
+                        })
+                    })
+
+                } else {
+
+                    // Apabila telah login menggunakan google, maka data tidak akan di insert lagi
+                    sql = `select * from users where googleId = '${encryptGoogleId}'`
                     mysql_conn.query(sql, (err, results) => {
                         if (err) {
                             return res.status(500).send({ status: 'error', err })
                         }
 
                         const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
-                        
+
                         return res.status(200).send({
                             name: results[0].name,
-                            username: results[0].username,
                             email: results[0].email,
                             token: tokenJwt,
                             status: results[0].status,
                             UserImage: results[0].UserImage,
-                            role: results[0].role
+                            role: results[0].role,
+                            address: results[0].address
                         });
                     })
-                })
-            
-            } else {
-
-                // Apabila telah login menggunakan google, maka data tidak akan di insert lagi
-                sql = `select * from users where googleId = '${encryptGoogleId}'`
-                mysql_conn.query(sql, (err, results) => {
-                    if (err) {
-                        return res.status(500).send({ status: 'error', err })
-                    }
-
-                    const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
-
-                    return res.status(200).send({
-                        FirstName: results[0].FirstName,
-                        LastName: results[0].LastName,
-                        username: results[0].username,
-                        email: results[0].email,
-                        token: tokenJwt,
-                        status: results[0].status,
-                        UserImage: results[0].UserImage,
-                        role: results[0].role,
-                        address: results[0].address
-                    });
-                })
-            }
+                }
+            })
         })
     },
 
     userLoginWithFacebook: (req, res) => {
-        let encryptFacebookId = Crypto.createHmac('sha256', 'macommerce_api')
-            .update(req.body.data.facebookId).digest('hex')
-
-        let sql = `select * from users where facebookId = '${encryptFacebookId}'`
-
-        mysql_conn.query(sql, (err, results) => {
+        let sql = `select * from users where email = '${req.body.data.email}'`
+        mysql_conn.query(sql, (err, resultsEmail) => {
             if (err) {
                 return res.status(500).send({ status: 'error', err })
             }
 
-            if (results.length === 0) {
-                // Apabila belum pernah login menggunakan facebook
-                sql = `insert into users set ?`
+            if (resultsEmail.length > 0) {
+                return res.status(500).send({ status: 'error', message: 'Email has been registered. Try another Email' });
+            }
 
-                req.body.data.facebookId = encryptFacebookId
-                req.body.data.role = 'User'
-                req.body.data.status = 'Verified'
-                req.body.data.UserImage = '/defaultPhoto/defaultUser.png'
-                req.body.data.LastLogin = new Date();
+            let encryptFacebookId = Crypto.createHmac('sha256', 'macommerce_api')
+                .update(req.body.data.facebookId).digest('hex')
 
-                mysql_conn.query(sql, req.body.data, (err, results1) => {
-                    if (err) {
-                        return res.status(500).send({ status: 'error', err })
-                    }
+            let sql = `select * from users where facebookId = '${encryptFacebookId}'`
 
-                    sql = `select * from users where id = ${results1.insertId}`
+            mysql_conn.query(sql, (err, results) => {
+                if (err) {
+                    return res.status(500).send({ status: 'error', err })
+                }
+
+                if (results.length === 0) {
+                    // Apabila belum pernah login menggunakan facebook
+                    sql = `insert into users set ?`
+
+                    req.body.data.facebookId = encryptFacebookId
+                    req.body.data.role = 'User'
+                    req.body.data.status = 'Unverified'
+                    req.body.data.UserImage = '/defaultPhoto/defaultUser.png'
+                    req.body.data.LastLogin = new Date();
+
+                    mysql_conn.query(sql, req.body.data, (err, results1) => {
+                        if (err) {
+                            return res.status(500).send({ status: 'error', err })
+                        }
+
+                        sql = `select * from users where id = ${results1.insertId}`
+                        mysql_conn.query(sql, (err, results) => {
+                            if (err) {
+                                return res.status(500).send({ status: 'error', err })
+                            }
+
+                            const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
+
+                            return res.status(200).send({
+                                name: results[0].name,
+                                email: results[0].email,
+                                token: tokenJwt,
+                                status: results[0].status,
+                                UserImage: results[0].UserImage,
+                                role: results[0].role
+                            });
+                        })
+                    })
+
+                } else {
+
+                    // Apabila telah login menggunakan facebook, maka data tidak akan di insert lagi
+                    sql = `select * from users where facebookId = '${encryptFacebookId}'`
                     mysql_conn.query(sql, (err, results) => {
                         if (err) {
                             return res.status(500).send({ status: 'error', err })
@@ -234,37 +277,15 @@ module.exports = {
 
                         return res.status(200).send({
                             name: results[0].name,
-                            username: results[0].username,
                             email: results[0].email,
                             token: tokenJwt,
                             status: results[0].status,
                             UserImage: results[0].UserImage,
-                            role: results[0].role
+                            role: results[0].role,
                         });
                     })
-                })
-
-            } else {
-
-                // Apabila telah login menggunakan facebook, maka data tidak akan di insert lagi
-                sql = `select * from users where facebookId = '${encryptFacebookId}'`
-                mysql_conn.query(sql, (err, results) => {
-                    if (err) {
-                        return res.status(500).send({ status: 'error', err })
-                    }
-
-                    const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
-
-                    return res.status(200).send({
-                        name: results[0].name,
-                        email: results[0].email,
-                        token: tokenJwt,
-                        status: results[0].status,
-                        UserImage: results[0].UserImage,
-                        role: results[0].role,
-                    });
-                })
-            }
+                }
+            })
         })
     },
 
@@ -323,16 +344,20 @@ module.exports = {
             const tokenJwt = createJWTToken({ userId: results[0].id, email: results[0].email })
 
             let linkVerifikasi = `http://localhost:3000/verified/${tokenJwt}`;
+            
+            //untuk live
+            //let linkVerifikasi = `https://testingui4.herokuapp.com/verified/${tokenJwt}`
+
             let mailOptions = {
-                from: 'MaCommerce Admin <rezardiansyah1997@gmail.com>',
+                from: 'TestingUi Admin <rezardiansyah1997@gmail.com>',
                 to: email,
-                subject: 'Verifikasi Email for MaCommerce',
+                subject: 'Verifikasi Email for TestingUi',
                 html: `
                                     <div>
                                         <img src='https://i.ibb.co/L8SgW3n/logo-Macommerce.png' /><span>Online Shop ter-update dalam fashion</span>
                                         <hr />
                                         <h4>Link Verification</h4>
-                                        <p>This is a link verification for username: <span style='font-weight:bold'>${results[0].username}</span>.</p>
+                                        <p>This is a link verification for Email: <span style='font-weight:bold'>${results[0].email}</span>.</p>
                                         <p>To verification your account <a href='${linkVerifikasi}'>Click Here!</a></p>
                                         <hr />
                                     </div>`
@@ -394,7 +419,7 @@ module.exports = {
                 return res.status(500).send({ status: 'error', message: 'Email belum terdaftar di webiste kami.' });
             }
 
-            let sql = `Select * from users where username='${email}' and password='${hashPassword}' and role='User'`;
+            let sql = `Select * from users where email='${email}' and password='${hashPassword}' and role='User'`;
             mysql_conn.query(sql, (err, results) => {
                 if (err) {
                     return res.status(500).send({ status: 'error', err })
@@ -507,26 +532,26 @@ module.exports = {
     },
 
      userChangeAddress: (req, res) => {
-        let sql = `update users set ? where id = ${req.user.userId}`
-        mysql_conn.query(sql, req.body.data, (err, results) => {
-            if (err) {
-                return res.status(500).send({ status: 'error', err })
-            }
-            console.log(results)
+        // let sql = `update users set ? where id = ${req.user.userId}`
+        // mysql_conn.query(sql, req.body.data, (err, results) => {
+        //     if (err) {
+        //         return res.status(500).send({ status: 'error', err })
+        //     }
+        //     console.log(results)
 
-            sql = `select FirstName, LastName, address from users where id = ${req.user.userId} and username = '${req.user.username}'`
-            mysql_conn.query(sql, (err, updateData) => {
-                if (err) {
-                    return res.status(500).send({ status: 'error', err })
-                }
+        //     sql = `select FirstName, LastName, address from users where id = ${req.user.userId} and email = '${req.user.email}'`
+        //     mysql_conn.query(sql, (err, updateData) => {
+        //         if (err) {
+        //             return res.status(500).send({ status: 'error', err })
+        //         }
 
-                return res.status(200).send({
-                    FirstName: updateData[0].FirstName,
-                    LastName: updateData[0].LastName,
-                    address: updateData[0].address
-                })
-            })
-        })
+        //         return res.status(200).send({
+        //             FirstName: updateData[0].FirstName,
+        //             LastName: updateData[0].LastName,
+        //             address: updateData[0].address
+        //         })
+        //     })
+        // })
     }, 
 
     commentOnProduct: (req, res) => {
@@ -592,6 +617,64 @@ module.exports = {
                 })
             })
         })
+    },
+
+    userForgotPassword: (req, res) => {
+        let sql = `select * from users where email = '${req.body.email}'`
+        mysql_conn.query(sql, (err, results) => {
+            if (err) {
+                return res.status(500).send({ status: 'error', err })
+            }
+
+            if (results.length === 0) {
+                return res.status(500).send({ status: 'notFoundEmail', message: 'Email belum terdaftar, harap Register terlebih dahulu' })
+            }
+            if(results[0].googleId && !results[0].password) {
+                return res.status(500).send({ status: 'gmailTrue', message: `Silahkan Login with Gmail dengan Email = ${req.body.email}` })
+            }
+
+            if (results[0].facebookId && !results[0].password) {
+                return res.status(500).send({ status: 'facebookTrue', message: `Silahkan Login with Facebook dengan Email = ${req.body.email}` })
+            }
+
+            const tokenPassword = createForgotPasswordToken({ userId: results[0].id, email: results[0].email })
+
+            let linkVerifikasi = `http://localhost:3000/verifiedReset?token=${tokenPassword}`;
+            //untuk live
+            //let linkVerifikasi = `https://testingui4.herokuapp.com/verifiedReset?token=${tokenPassword}`
+
+            let mailOptions = {
+                from: 'TestingUi Admin <rezardiansyah1997@gmail.com>',
+                to: req.body.email,
+                subject: `Reset Password for ${req.body.email}`,
+                html: `
+                    <div>
+                        <img src='https://i.ibb.co/L8SgW3n/logo-Macommerce.png' /><span>Berbagi itu hal yang sangat indah</span>
+                        <hr />
+                        <h4>Reset Password</h4>
+                        <p>This is a link reset password for Email: <span style='font-weight:bold'>${req.body.email}</span>.</p>
+                        <p>To reset your account password <a href='${linkVerifikasi}'>Click Here!</a></p>
+                        <hr />
+                    </div>`
+            }
+
+            transporter.sendMail(mailOptions, (err1, res1) => {
+                if (err1) {
+                    return res.status(500).send({ status: 'error', err: err1 })
+                }
+
+                return res.status(200).send({
+                    token: tokenPassword
+                });
+
+            })
+        })
+    },
+
+    userCheckResetToken: (req, res) => {
+        let resetToken = req.resetToken
+        console.log(resetToken)
+        return res.status(200).send(resetToken)
     },
 
     replyCommentProduct: (req, res) => {

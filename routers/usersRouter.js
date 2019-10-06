@@ -1,6 +1,6 @@
 const express = require('express');
 const { usersController } = require('../controllers');
-const { auth } = require('../helpers/auth');
+const { auth, resetToken } = require('../helpers/auth');
 
 const router = express.Router();
 
@@ -19,6 +19,9 @@ router.post('/userReplyComment', auth, usersController.replyCommentProduct);
 
 router.post('/userLoginWithGoogle', usersController.userLoginWithGoogle)
 router.post('/userLoginWithFacebook', usersController.userLoginWithFacebook)
+router.post('/userForgotPassword', usersController.userForgotPassword);
+
+router.get('/userGetResetToken', resetToken, usersController.userCheckResetToken);
 
 module.exports = router;
 
