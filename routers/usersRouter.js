@@ -23,6 +23,7 @@ router.post('/userForgotPassword', usersController.userForgotPassword);
 
 router.get('/userGetResetToken', resetToken, usersController.userCheckResetToken);
 router.post('/newPasswordUser', resetToken, usersController.userResetPassword)
+router.post('/changeUserPassword', auth, usersController.userChangePassword)
 
 module.exports = router;
 

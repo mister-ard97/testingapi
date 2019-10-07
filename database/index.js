@@ -13,8 +13,8 @@ const mysql = require('mysql');
 // Untuk di laptop
  const mysqldb_conn = mysql.createConnection({
      host: 'localhost',
-     user: 'rezadb',
-     password: 'rezadb10071997',
+     user: 'enverd',
+     password: '123123123',
      database: 'testingapi',
      port: 3306,
      multipleStatements: true
