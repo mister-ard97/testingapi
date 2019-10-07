@@ -129,10 +129,14 @@ module.exports = {
     }, 
 
     userLoginWithGoogle: (req, res) => {
-        let sql = `select * from users where email = '${req.body.data.email}'`
+        let sql = `select * from users where email = '${req.body.data.email}' and googleId IS NULL`
         mysql_conn.query(sql, (err, resultsEmail) => {
             if(err) {
                 return res.status(500).send({ status: 'error', err })
+            }
+
+            if(resultsEmail.length > 0) {
+                return res.status(500).send({ status: 'error', message: `Anda sudah pernah mendaftar dengan Email = ${req.body.data.email}`})
             }
 
             let encryptGoogleId = Crypto.createHmac('sha256', 'macommerce_api')
@@ -206,10 +210,14 @@ module.exports = {
     },
 
     userLoginWithFacebook: (req, res) => {
-        let sql = `select * from users where email = '${req.body.data.email}'`
+        let sql = `select * from users where email = '${req.body.data.email}' and facebookId IS NULL`
         mysql_conn.query(sql, (err, resultsEmail) => {
             if (err) {
                 return res.status(500).send({ status: 'error', err })
+            }
+
+            if (resultsEmail.length > 0) {
+                return res.status(500).send({ status: 'error', message: `Anda sudah pernah mendaftar dengan Email = ${req.body.data.email}` })
             }
 
             let encryptFacebookId = Crypto.createHmac('sha256', 'macommerce_api')
@@ -513,20 +521,30 @@ module.exports = {
             return res.status(200).send(results)
         })
     },
+
     userChangePassword: (req, res) => {
-        console.log(req.body)
-        console.log('masukmasuk')
         let oldPw = Crypto.createHmac('sha256', 'macommerce_api').update(req.body.oldpw).digest('hex');
         let newPw = Crypto.createHmac('sha256', 'macommerce_api').update(req.body.newpw).digest('hex');
 
-        let sql = `update users set password = '${newPw}' where password = '${oldPw}' and email = '${req.body.email}' `
-        console.log(sql)
+        let sql = `select * from users where password = '${oldPw}' and email = '${req.body.email}'`
         mysql_conn.query(sql, (err, results) => {
             if (err) {
                 return res.status(500).send({ status: 'error', err })
             }
 
-            return res.status(200).send(results)
+            if(results.length === 0) {
+                return res.status(500).send({ status: 'error', message: 'Password Lama yang anda masukan salah.' })
+            }
+
+            sql = `update users set password = '${newPw}' where password = '${oldPw}' and email = '${req.body.email}' `
+            console.log(sql)
+            mysql_conn.query(sql, (err, results) => {
+                if (err) {
+                    return res.status(500).send({ status: 'error', err })
+                }
+
+                return res.status(200).send(results)
+            })
         })
     },
 
