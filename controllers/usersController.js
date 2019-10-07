@@ -513,6 +513,23 @@ module.exports = {
             return res.status(200).send(results)
         })
     },
+    userChangePassword: (req, res) => {
+        console.log(req.body)
+        console.log('masukmasuk')
+        let oldPw = Crypto.createHmac('sha256', 'macommerce_api').update(req.body.oldpw).digest('hex');
+        let newPw = Crypto.createHmac('sha256', 'macommerce_api').update(req.body.newpw).digest('hex');
+
+        let sql = `update users set password = '${newPw}' where password = '${oldPw}' and email = '${req.body.email}' `
+        console.log(sql)
+        mysql_conn.query(sql, (err, results) => {
+            if (err) {
+                return res.status(500).send({ status: 'error', err })
+            }
+
+            return res.status(200).send(results)
+        })
+    },
+
 
     userGetWishlist: (req, res) => {
         let sql = `select 
