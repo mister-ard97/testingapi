@@ -31,6 +31,14 @@ module.exports={
                     }
                     sql = ` select * from campign_post cp join campaigner_data cd on cp.campaigner_id=cd.id join receiver_data rd on cp.receiver_id=rd.id
                             where cd.userid=${userid}`
+                    mysql_conn.query(sql,(err,result1)=>{
+                        if(err) {
+                            console.log(err.message)
+                            fs.unlinkSync('./public' + imagePath);
+                            return res.status(500).json({ message: "There's an error on the server. Please contact the administrator.", error: err.message });
+                        }
+                        return res.status(200).send(result1)
+                    })
                 })
                 
             })
