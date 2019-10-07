@@ -3,8 +3,8 @@ const mysql = require('mysql');
 // Untuk di komputer
   const mysqldb_conn = mysql.createConnection({
     host: 'localhost',
-     user: 'reza_admin',
-     password: 'reza_admin10071997',
+     user: 'dino9611',
+     password: 'tungkal01',
      database: 'testingapi',
      port: 3306,
      multipleStatements: true
