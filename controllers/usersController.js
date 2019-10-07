@@ -672,9 +672,9 @@ module.exports = {
     },
 
     userCheckResetToken: (req, res) => {
-        let resetToken = req.resetToken
+        let email = req.resetToken.email
         console.log(resetToken)
-        return res.status(200).send(resetToken)
+        return res.status(200).send(email)
     },
 
     replyCommentProduct: (req, res) => {
