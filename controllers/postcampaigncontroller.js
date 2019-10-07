@@ -46,4 +46,17 @@ module.exports={
             return res.status(500).json({ message: "There's an error on the server. Please contact the administrator.", error: err.message });
         }
     },
+    getCampaign(req,res){
+        const {userid}=req.params
+
+        var sql = ` select * from campign_post cp join campaigner_data cd on cp.campaigner_id=cd.id join receiver_data rd on cp.receiver_id=rd.id
+                            where cd.userid=${userid}`
+        mysql_conn.query(sql,(err,result)=>{
+            if(err) {
+                console.log(err.message)
+                return res.status(500).json({ message: "There's an error on the server. Please contact the administrator.", error: err.message });
+            }
+            return res.status(200).send(result)
+        })
+    }
 }

@@ -24,7 +24,8 @@ const {
     adminRouter,
     productRouter,
     cartRouter,
-    transactionRouter
+    transactionRouter,
+    campaignRouter
 } = require('./routers');
 
 app_api.use('/user', usersRouter);
@@ -32,5 +33,6 @@ app_api.use('/productMaCommerce', productRouter);
 app_api.use('/admin', adminRouter);
 app_api.use('/cart', cartRouter);
 app_api.use('/transaction', transactionRouter);
+app_api.use('/campaign',campaignRouter)
 
 app_api.listen(port, () => console.log(`Server API Aktif di port ${port}`));
