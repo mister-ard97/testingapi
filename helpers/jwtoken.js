@@ -6,6 +6,6 @@ module.exports = {
     },
 
     createForgotPasswordToken(payload) {
-        return jwt.sign(payload, "ForgotPasswordToken", { expiresIn: '2m' })
+        return jwt.sign(payload, "ForgotPasswordToken", { expiresIn: '3m' })
     }
 }

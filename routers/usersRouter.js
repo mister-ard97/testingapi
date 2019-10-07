@@ -22,6 +22,7 @@ router.post('/userLoginWithFacebook', usersController.userLoginWithFacebook)
 router.post('/userForgotPassword', usersController.userForgotPassword);
 
 router.get('/userGetResetToken', resetToken, usersController.userCheckResetToken);
+router.post('/newPasswordUser', resetToken, usersController.userResetPassword)
 
 module.exports = router;
 

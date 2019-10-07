@@ -135,10 +135,6 @@ module.exports = {
                 return res.status(500).send({ status: 'error', err })
             }
 
-            if(resultsEmail.length > 0) {
-                return res.status(500).send({ status: 'error', message: 'Email has been registered. Try another Email' });
-            }
-
             let encryptGoogleId = Crypto.createHmac('sha256', 'macommerce_api')
                 .update(req.body.data.googleId).digest('hex')
 
@@ -214,10 +210,6 @@ module.exports = {
         mysql_conn.query(sql, (err, resultsEmail) => {
             if (err) {
                 return res.status(500).send({ status: 'error', err })
-            }
-
-            if (resultsEmail.length > 0) {
-                return res.status(500).send({ status: 'error', message: 'Email has been registered. Try another Email' });
             }
 
             let encryptFacebookId = Crypto.createHmac('sha256', 'macommerce_api')
@@ -455,6 +447,73 @@ module.exports = {
         })
     },
 
+    userForgotPassword: (req, res) => {
+        let sql = `select * from users where email = '${req.body.email}'`
+        mysql_conn.query(sql, (err, results) => {
+            if (err) {
+                return res.status(500).send({ status: 'error', err })
+            }
+
+            if (results.length === 0) {
+                return res.status(500).send({ status: 'notFoundEmail', message: 'Email belum terdaftar, harap Register terlebih dahulu' })
+            }
+            if (results[0].googleId && !results[0].password) {
+                return res.status(500).send({ status: 'gmailTrue', message: `Silahkan Login with Gmail dengan Email = ${req.body.email}` })
+            }
+
+            if (results[0].facebookId && !results[0].password) {
+                return res.status(500).send({ status: 'facebookTrue', message: `Silahkan Login with Facebook dengan Email = ${req.body.email}` })
+            }
+
+            const tokenPassword = createForgotPasswordToken({ userId: results[0].id, email: results[0].email })
+
+            let linkVerifikasi = `http://localhost:3000/verifiedReset?token=${tokenPassword}`;
+            //untuk live
+            //let linkVerifikasi = `https://testingui4.herokuapp.com/verifiedReset?token=${tokenPassword}`
+
+            let mailOptions = {
+                from: 'TestingUi Admin <rezardiansyah1997@gmail.com>',
+                to: req.body.email,
+                subject: `Reset Password for ${req.body.email}`,
+                html: `
+                    <div>
+                        <img src='https://i.ibb.co/L8SgW3n/logo-Macommerce.png' /><span>Berbagi itu hal yang sangat indah</span>
+                        <hr />
+                        <h4>Reset Password</h4>
+                        <p>This is a link reset password for Email: <span style='font-weight:bold'>${req.body.email}</span>.</p>
+                        <p>This link will expire in 5 minutes</p>
+                        <p>To reset your account password <a href='${linkVerifikasi}'>Click Here!</a></p>
+                        <hr />
+                    </div>`
+            }
+
+            transporter.sendMail(mailOptions, (err1, res1) => {
+                if (err1) {
+                    return res.status(500).send({ status: 'error', err: err1 })
+                }
+
+                return res.status(200).send({
+                    token: tokenPassword
+                });
+
+            })
+        })
+    },
+
+    userResetPassword: (req, res) => {
+
+        let hashPassword = Crypto.createHmac('sha256', 'macommerce_api')
+            .update(req.body.data.password).digest('hex');
+        let sql = `update users set password = '${hashPassword}' where email = '${req.body.data.email}'`
+        mysql_conn.query(sql, (err, results) => {
+            if (err) {
+                return res.status(500).send({ status: 'error', err })
+            }
+
+            return res.status(200).send(results)
+        })
+    },
+
     userGetWishlist: (req, res) => {
         let sql = `select 
         p.coverImage, 
@@ -619,61 +678,9 @@ module.exports = {
         })
     },
 
-    userForgotPassword: (req, res) => {
-        let sql = `select * from users where email = '${req.body.email}'`
-        mysql_conn.query(sql, (err, results) => {
-            if (err) {
-                return res.status(500).send({ status: 'error', err })
-            }
-
-            if (results.length === 0) {
-                return res.status(500).send({ status: 'notFoundEmail', message: 'Email belum terdaftar, harap Register terlebih dahulu' })
-            }
-            if(results[0].googleId && !results[0].password) {
-                return res.status(500).send({ status: 'gmailTrue', message: `Silahkan Login with Gmail dengan Email = ${req.body.email}` })
-            }
-
-            if (results[0].facebookId && !results[0].password) {
-                return res.status(500).send({ status: 'facebookTrue', message: `Silahkan Login with Facebook dengan Email = ${req.body.email}` })
-            }
-
-            const tokenPassword = createForgotPasswordToken({ userId: results[0].id, email: results[0].email })
-
-            let linkVerifikasi = `http://localhost:3000/verifiedReset?token=${tokenPassword}`;
-            //untuk live
-            //let linkVerifikasi = `https://testingui4.herokuapp.com/verifiedReset?token=${tokenPassword}`
-
-            let mailOptions = {
-                from: 'TestingUi Admin <rezardiansyah1997@gmail.com>',
-                to: req.body.email,
-                subject: `Reset Password for ${req.body.email}`,
-                html: `
-                    <div>
-                        <img src='https://i.ibb.co/L8SgW3n/logo-Macommerce.png' /><span>Berbagi itu hal yang sangat indah</span>
-                        <hr />
-                        <h4>Reset Password</h4>
-                        <p>This is a link reset password for Email: <span style='font-weight:bold'>${req.body.email}</span>.</p>
-                        <p>To reset your account password <a href='${linkVerifikasi}'>Click Here!</a></p>
-                        <hr />
-                    </div>`
-            }
-
-            transporter.sendMail(mailOptions, (err1, res1) => {
-                if (err1) {
-                    return res.status(500).send({ status: 'error', err: err1 })
-                }
-
-                return res.status(200).send({
-                    token: tokenPassword
-                });
-
-            })
-        })
-    },
-
     userCheckResetToken: (req, res) => {
         let email = req.resetToken.email
-        console.log(resetToken)
+
         return res.status(200).send(email)
     },
 

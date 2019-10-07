@@ -247,20 +247,7 @@ module.exports = {
                 return res.status(500).send({ status: 'error', err })
             }
 
-            sql = `select 
-                        c.id as parentId, 
-                        c2.id as idsubcategory,
-                        c2.name as subcategory 
-                    from category as c 
-                    join category as c2 on c2.parentId = c.id`
-                    
-            mysql_conn.query(sql, (err , results1) => {
-                if (err) {
-                    return res.status(500).send({ status: 'error', err })
-                }
-
-                return res.status(200).send({categoryParent: results, subCategory: results1})
-            })
+            return res.status(200).send(results)
         })
     },
 
