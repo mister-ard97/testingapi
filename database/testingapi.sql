@@ -95,7 +95,7 @@ CREATE TABLE `category` (
 
 LOCK TABLES `category` WRITE;
 /*!40000 ALTER TABLE `category` DISABLE KEYS */;
-INSERT INTO `category` VALUES (1,'Men',NULL,'/category/MaCommerce-1568817676501.jpg'),(2,'T-Shirt',1,NULL),(3,'Pants',1,NULL),(4,'Women',NULL,'/category/MaCommerce-1568817994227.jpg'),(5,'Skirt',4,NULL),(6,'Dress',4,NULL),(13,'Sweater',4,NULL);
+INSERT INTO `category` VALUES (1,'SD',NULL,NULL),(4,'SMP',NULL,NULL),(5,'SMA',NULL,NULL);
 /*!40000 ALTER TABLE `category` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -238,7 +238,7 @@ CREATE TABLE `users` (
   `googleId` varchar(65) DEFAULT NULL,
   `facebookId` varchar(65) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -247,7 +247,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,NULL,'rezamusashi@gmail.com','Reza Ardi',NULL,'Verified','2019-10-04 10:48:09','/defaultPhoto/defaultUser.png','User',NULL,'78ba5120997f404efafc5e644d6489a7a6005631ebb4430a1e3353f86b4af7f0');
+INSERT INTO `users` VALUES (1,NULL,'rezamusashi@gmail.com','Reza Ardi',NULL,'Verified','2019-10-04 10:48:09','/defaultPhoto/defaultUser.png','User',NULL,'78ba5120997f404efafc5e644d6489a7a6005631ebb4430a1e3353f86b4af7f0'),(2,NULL,'rezardiansyah1997@gmail.com','Reza Ardiansyah',NULL,'Verified','2019-10-04 13:32:01','/defaultPhoto/defaultUser.png','User','6aeb24e9626ad9376f91a23842fe6140b7a97f55023f213e0dbbe34bd141bc2f',NULL),(3,NULL,'hilal_4@rocketmail.com','Ahmad Hisbullah',NULL,'Verified','2019-10-04 13:53:04','/defaultPhoto/defaultUser.png','User',NULL,'3595483ef077a5fe93cf5e56f7950211725172c2f9aaad31ae2f7629d303164c'),(4,'70c7f533f04ec32bb092efc88854934cbcbc1f35fa1476f507324721b65b003c','yubikitta@gmail.com','Reza Ardiansyah',NULL,'Verified','2019-10-07 09:18:55','/defaultPhoto/defaultUser.png','User',NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -283,4 +283,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2019-10-04 10:53:54
+-- Dump completed on 2019-10-07 14:56:47
